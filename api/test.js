@@ -1,28 +1,49 @@
-// api/test.js — Test a message against keyword rules without sending anything
-export default function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+import supabase from './_supabase.js'
 
-  const { text, platform = 'instagram' } = req.body;
-  if (!text) return res.status(400).json({ error: 'text required' });
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'POST')
+    return res.status(405).json({ error: 'POST only' })
 
-  const rules = [
-    { id:1, keyword:'price',     matchType:'contains', reply:'Hi! 👋 Our prices start from $19/mo. DM us for a custom quote!' },
-    { id:2, keyword:'shipping',  matchType:'contains', reply:'We ship worldwide! 🚀 Free shipping on orders $50+!' },
-    { id:3, keyword:'discount',  matchType:'contains', reply:'🎁 Use code SAVE20 for 20% off! Valid this week only.' },
-    { id:4, keyword:'available', matchType:'contains', reply:'Yes! Still in stock ✅ — grab yours before it sells out!' },
-    { id:5, keyword:'collab',    matchType:'contains', reply:'Love the interest! 💫 DM us your media kit.' },
-  ];
+  const { text, user_id } = req.body
+  if (!text) return res.status(400).json({ error: 'text required' })
+  if (!user_id) return res.status(400).json({ error: 'user_id required' })
 
-  const h = text.toLowerCase();
-  const rule = rules.find(r => {
-    const n = r.keyword.toLowerCase();
-    return r.matchType === 'exact' ? h.trim() === n : h.includes(n);
-  });
+  try {
+    // Fetch rules from database
+    const { data: rules, error } = await supabase
+      .from('keywords')
+      .select('*')
+      .eq('user_id', user_id)
 
-  return res.json(rule
-    ? { matched: true,  keyword: rule.keyword, ruleId: rule.id, reply: rule.reply, text, platform }
-    : { matched: false, message: 'No rule matched', text, platform }
-  );
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    const h = text.toLowerCase()
+
+    const rule = rules.find(r =>
+      h.includes(r.keyword.toLowerCase())
+    )
+
+    if (rule) {
+      return res.status(200).json({
+        matched: true,
+        keyword: rule.keyword,
+        reply: rule.reply_message
+      })
+    }
+
+    return res.status(200).json({
+      matched: false,
+      message: 'No keyword matched'
+    })
+
+  } catch (err) {
+    return res.status(500).json({
+      error: 'Server error',
+      details: err.message
+    })
+  }
 }
