@@ -1039,13 +1039,11 @@ export default function App() {
   useEffect(() => {
     injectCSS();
 
-    // Get session on load
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
     });
 
-    // Listen for login/logout changes
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -1061,19 +1059,21 @@ export default function App() {
     return <div style={{ padding: 40 }}>Loading...</div>;
   }
 
-  // If not logged in → show landing always
-  if (!session) {
-    return <Landing onStart={() => setScreen("signup")} />;
-  }
-
-  // If logged in → allow full app flow
   const screens = {
     landing: <Landing onStart={() => setScreen("signup")} />,
     signup: <SignUp onNext={() => setScreen("connect")} data={userData} setData={setUserData} />,
-    connect: <ConnectPlatform onNext={() => setScreen("plan")} data={userData} setData={setUserData} />,
-    plan: <ChoosePlan onNext={() => setScreen("keywords")} data={userData} setData={setUserData} />,
-    keywords: <KeywordSetup onNext={() => setScreen("dashboard")} data={userData} setData={setUserData} />,
-    dashboard: <Dashboard data={userData} />,
+    connect: session
+      ? <ConnectPlatform onNext={() => setScreen("plan")} data={userData} setData={setUserData} />
+      : <Landing onStart={() => setScreen("signup")} />,
+    plan: session
+      ? <ChoosePlan onNext={() => setScreen("keywords")} data={userData} setData={setUserData} />
+      : <Landing onStart={() => setScreen("signup")} />,
+    keywords: session
+      ? <KeywordSetup onNext={() => setScreen("dashboard")} data={userData} setData={setUserData} />
+      : <Landing onStart={() => setScreen("signup")} />,
+    dashboard: session
+      ? <Dashboard data={userData} />
+      : <Landing onStart={() => setScreen("signup")} />,
   };
 
   return screens[screen] || screens.landing;
