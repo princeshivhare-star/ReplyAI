@@ -17,8 +17,5 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, x-api-key, x-hub-signature-256" }
       ]
     }
-  ],
-  "env": {
-    "VITE_API_URL": "@vite_api_url"
-  }
+  ]
 }
