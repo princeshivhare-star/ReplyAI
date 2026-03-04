@@ -1,3 +1,7 @@
+import { useState, useEffect } from "react";
+import { supabase } from "./lib/supabase";
+
+
 import { useState, useEffect, useRef } from "react";
 
 /* ─── FONTS & GLOBAL CSS ─── */
@@ -1029,11 +1033,43 @@ const SIM_MSGS = [
    ROOT APP
 ══════════════════════════════════════════════ */
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing, signup, connect, plan, keywords, dashboard
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [screen, setScreen] = useState("landing");
   const [userData, setUserData] = useState({});
 
-  useEffect(() => { injectCSS(); }, []);
+  useEffect(() => {
+    injectCSS();
 
+    // Get session on load
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    // Listen for login/logout changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: 40 }}>Loading...</div>;
+  }
+
+  // If not logged in → show landing always
+  if (!session) {
+    return <Landing onStart={() => setScreen("signup")} />;
+  }
+
+  // If logged in → allow full app flow
   const screens = {
     landing: <Landing onStart={() => setScreen("signup")} />,
     signup: <SignUp onNext={() => setScreen("connect")} data={userData} setData={setUserData} />,
@@ -1045,4 +1081,3 @@ export default function App() {
 
   return screens[screen] || screens.landing;
 }
-
