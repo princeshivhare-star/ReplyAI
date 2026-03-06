@@ -1037,28 +1037,33 @@ export default function App() {
   const [userData, setUserData] = useState({});
 
   useEffect(() => {
-    injectCSS();
+  injectCSS();
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+  supabase.auth.getSession().then(({ data }) => {
+    setSession(data.session);
+    setLoading(false);
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
+    if (data.session) {
+      setScreen("dashboard"); // go directly to dashboard
+    }
+  });
+
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      setSession(session);
+
+      if (session) {
+        setScreen("dashboard");
+      } else {
+        setScreen("landing");
       }
-    );
+    }
+  );
 
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  if (loading) {
-    return <div style={{ padding: 40 }}>Loading...</div>;
-  }
-
+  return () => {
+    listener.subscription.unsubscribe();
+  };
+}, []);
   const screens = {
     landing: <Landing onStart={() => setScreen("signup")} />,
     signup: <SignUp onNext={() => setScreen("connect")} data={userData} setData={setUserData} />,
