@@ -1037,48 +1037,88 @@ export default function App() {
   const [userData, setUserData] = useState({});
 
   useEffect(() => {
-  injectCSS();
+    injectCSS();
 
-  supabase.auth.getSession().then(({ data }) => {
-    setSession(data.session);
-    setLoading(false);
+    // restore session on refresh
+    supabase.auth.getSession().then(({ data }) => {
+      const currentSession = data.session;
+      setSession(currentSession);
+      setLoading(false);
 
-    if (data.session) {
-      setScreen("dashboard"); // go directly to dashboard
-    }
-  });
-
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      setSession(session);
-
-      if (session) {
+      if (currentSession) {
         setScreen("dashboard");
-      } else {
-        setScreen("landing");
       }
-    }
-  );
+    });
 
-  return () => {
-    listener.subscription.unsubscribe();
-  };
-}, []);
+    // listen for login/logout changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+
+        if (session) {
+          setScreen("dashboard");
+        } else {
+          setScreen("landing");
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // prevent access without login
+  useEffect(() => {
+    if (!session && screen !== "landing" && screen !== "signup") {
+      setScreen("landing");
+    }
+  }, [session, screen]);
+
+  if (loading) {
+    return <div style={{ padding: 40 }}>Loading...</div>;
+  }
+
   const screens = {
-    landing: <Landing onStart={() => setScreen("signup")} />,
-    signup: <SignUp onNext={() => setScreen("connect")} data={userData} setData={setUserData} />,
-    connect: session
-      ? <ConnectPlatform onNext={() => setScreen("plan")} data={userData} setData={setUserData} />
-      : <Landing onStart={() => setScreen("signup")} />,
-    plan: session
-      ? <ChoosePlan onNext={() => setScreen("keywords")} data={userData} setData={setUserData} />
-      : <Landing onStart={() => setScreen("signup")} />,
-    keywords: session
-      ? <KeywordSetup onNext={() => setScreen("dashboard")} data={userData} setData={setUserData} />
-      : <Landing onStart={() => setScreen("signup")} />,
-    dashboard: session
-      ? <Dashboard data={userData} />
-      : <Landing onStart={() => setScreen("signup")} />,
+    landing: (
+      <Landing onStart={() => setScreen("signup")} />
+    ),
+
+    signup: (
+      <SignUp
+        onNext={() => setScreen("connect")}
+        data={userData}
+        setData={setUserData}
+      />
+    ),
+
+    connect: (
+      <ConnectPlatform
+        onNext={() => setScreen("plan")}
+        data={userData}
+        setData={setUserData}
+      />
+    ),
+
+    plan: (
+      <ChoosePlan
+        onNext={() => setScreen("keywords")}
+        data={userData}
+        setData={setUserData}
+      />
+    ),
+
+    keywords: (
+      <KeywordSetup
+        onNext={() => setScreen("dashboard")}
+        data={userData}
+        setData={setUserData}
+      />
+    ),
+
+    dashboard: (
+      <Dashboard data={userData} />
+    )
   };
 
   return screens[screen] || screens.landing;
