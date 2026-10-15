@@ -4,17 +4,21 @@
   "description": "ReplyAI \u2014 Instagram/Facebook Auto Reply SaaS",
   "type": "module",
   "scripts": {
-    "dev": "node api.js && vite",
+    "dev": "node api.js && node scripts/dev.js",
     "build": "node api.js && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test api/_rules.test.js api/_plans.test.js api/_signatures.test.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "openai": "^5.12.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.43.4"
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.2"
+    "@vitejs/plugin-react": "^6.1.2",
+    "dotenv": "^16.4.5",
+    "vite": "^8.3.4"
   }
 }
