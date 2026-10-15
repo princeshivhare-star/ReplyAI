@@ -1,37 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
-import LandingPage from './LandingPage';
-import Dashboard from './Dashboard';
-import { checkAuth } from './auth'; // Assuming there's a method to check authentication
+import { useEffect, useState } from 'react'
+import AuthPage from './AuthPage'
+import Dashboard from './Dashboard'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
+import './styles.css'
 
-const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const checkUserAuth = async () => {
-      const authStatus = await checkAuth(); // Fetch authentication status
-      setIsAuthenticated(authStatus);
-      setLoading(false);
-    };
-    checkUserAuth();
-  }, []);
-
-  if (loading) {
-    return <div>Loading...</div>; // Or a loader component
+  async function signOut() {
+    const { error } = await supabase.auth.signOut()
+    if (error) console.error('Unable to sign out:', error.message)
   }
 
-  return (
-    <Router>
-      <Switch>
-        <Route path="/" exact component={LandingPage} />
-        <Route path="/dashboard" render={() => (
-          isAuthenticated ? <Dashboard /> : <Redirect to="/" />
-        )} />
-        <Redirect to="/" />
-      </Switch>
-    </Router>
-  );
-};
+  useEffect(() => {
+    if (!supabase) return
 
-export default App;
+    let alive = true
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive) return
+      if (error) console.error('Unable to restore session:', error.message)
+      setSession(data?.session ?? null)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setLoading(false)
+    })
+
+    return () => {
+      alive = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  if (!isSupabaseConfigured) {
+    return (
+      <main className="setup-screen">
+        <div className="setup-card">
+          <span className="brand-mark">R</span>
+          <p className="eyebrow">ONE QUICK SETUP STEP</p>
+          <h1>Connect your Supabase project</h1>
+          <p>Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to your local environment to enable secure sign-in.</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (loading) {
+    return <main className="loading-screen"><span className="spinner" />Loading your workspace…</main>
+  }
+
+  return session
+    ? <Dashboard session={session} onSignOut={signOut} />
+    : <AuthPage />
+}
